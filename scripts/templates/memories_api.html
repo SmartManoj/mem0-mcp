@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Memories Table</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f0f0f0; }
+    .actions { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h2>Memories</h2>
+  <div class="actions">
+    <label>Filter by category:
+      <input type="text" id="categoryFilter" placeholder="e.g. user_preferences">
+    </label>
+    <label style="margin-left:20px;">Memory regex:
+      <input type="text" id="memoryRegex" placeholder="e.g. preferred">
+    </label>
+    <button onclick="loadMemories()">Apply Filter</button>
+    <button onclick="selectAll()">Select All</button>
+    <button onclick="deleteSelected()">Delete Selected</button>
+  </div>
+  <table id="memoriesTable">
+    <thead>
+      <tr>
+        <th><input type="checkbox" id="selectAllBox" onclick="toggleAll(this)"></th>
+        <th>ID</th>
+        <th>Memory</th>
+        <th>Categories</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    let memories = [];
+    function loadMemories() {
+      const cat = document.getElementById('categoryFilter').value;
+      const regex = document.getElementById('memoryRegex').value;
+      let url = '/memories';
+      const params = [];
+      if (cat) params.push('category=' + encodeURIComponent(cat));
+      if (regex) params.push('memory_regex=' + encodeURIComponent(regex));
+      if (params.length) url += '?' + params.join('&');
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+          }
+          memories = data;
+          renderTable();
+        });
+    }
+    function renderTable() {
+      const tbody = document.querySelector('#memoriesTable tbody');
+      tbody.innerHTML = '';
+      memories.forEach((m, i) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><input type="checkbox" class="rowbox" data-idx="${i}"></td>
+          <td>${m.id}</td>
+          <td>${m.memory}</td>
+          <td>${(m.categories || []).join(', ')}</td>
+          <td>${m.created_at || ''}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    function selectAll() {
+      document.querySelectorAll('.rowbox').forEach(cb => cb.checked = true);
+    }
+    function toggleAll(box) {
+      document.querySelectorAll('.rowbox').forEach(cb => cb.checked = box.checked);
+    }
+    function deleteSelected() {
+      const selected = Array.from(document.querySelectorAll('.rowbox'))
+        .map((cb, i) => cb.checked ? memories[i].id : null)
+        .filter(x => x);
+      if (!selected.length) return alert('No rows selected');
+      if (!confirm('Delete selected memories?')) return;
+      fetch('/memories', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selected })
+      })
+      .then(r => r.json())
+      .then(() => loadMemories());
+    }
+    // Initial load
+    loadMemories();
+  </script>
+</body>
+</html> 
