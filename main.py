@@ -16,7 +16,7 @@ mcp = FastMCP("mem0-mcp")
 
 # Initialize mem0 client and set default user
 mem0_client = MemoryClient()
-DEFAULT_USER_ID = "cursor_mcp"
+DEFAULT_USER_ID = "chrome-extension-user"
 CUSTOM_INSTRUCTIONS = """
 Extract the Following Information:  
 
@@ -28,104 +28,103 @@ Extract the Following Information:
 mem0_client.update_project(custom_instructions=CUSTOM_INSTRUCTIONS)
 
 @mcp.tool(
-    description="""Add a new coding preference to mem0. This tool stores code snippets, implementation details,
-    and coding patterns for future reference. Store every code snippet. When storing code, you should include:
-    - Complete code with all necessary imports and dependencies
-    - Language/framework version information (e.g., "Python 3.9", "React 18")
-    - Full implementation context and any required setup/configuration
-    - Detailed comments explaining the logic, especially for complex sections
-    - Example usage or test cases demonstrating the code
-    - Any known limitations, edge cases, or performance considerations
-    - Related patterns or alternative approaches
-    - Links to relevant documentation or resources
-    - Environment setup requirements (if applicable)
-    - Error handling and debugging tips
-    The preference will be indexed for semantic search and can be retrieved later using natural language queries."""
+    description="""Create a new memory entry in mem0. This tool stores any kind of information, such as code snippets, notes, implementation details, or patterns for future reference. When storing a memory, you should include:
+    - Complete context and all necessary details
+    - Any relevant metadata (e.g., language, version, tags)
+    - Example usage or scenarios
+    - Known limitations or considerations
+    The memory will be indexed for semantic search and can be retrieved later using natural language queries."""
 )
-async def add_coding_preference(text: str) -> str:
-    """Add a new coding preference to mem0.
-
-    This tool is designed to store code snippets, implementation patterns, and programming knowledge.
-    When storing code, it's recommended to include:
-    - Complete code with imports and dependencies
-    - Language/framework information
-    - Setup instructions if needed
-    - Documentation and comments
-    - Example usage
+async def create_memory(text: str) -> str:
+    """Create a new memory entry in mem0.
 
     Args:
-        text: The content to store in memory, including code, documentation, and context
+        text: The content to store in memory, including any context, code, or documentation
     """
     try:
         messages = [{"role": "user", "content": text}]
         mem0_client.add(messages, user_id=DEFAULT_USER_ID, output_format="v1.1")
-        return f"Successfully added preference: {text}"
+        return f"Successfully added memory: {text}"
     except Exception as e:
-        return f"Error adding preference: {str(e)}"
+        return f"Error adding memory: {str(e)}"
 
 @mcp.tool(
-    description="""Retrieve all stored coding preferences for the default user. Call this tool when you need 
-    complete context of all previously stored preferences. This is useful when:
-    - You need to analyze all available code patterns
-    - You want to check all stored implementation examples
-    - You need to review the full history of stored solutions
+    description="""Retrieve all stored memories for the default user. Call this tool when you need complete context of all previously stored information. This is useful when:
+    - You need to analyze all available notes or patterns
+    - You want to check all stored examples or solutions
+    - You need to review the full history of stored information
     - You want to ensure no relevant information is missed
-    Returns a comprehensive list of:
-    - Code snippets and implementation patterns
-    - Programming knowledge and best practices
-    - Technical documentation and examples
-    - Setup and configuration guides
-    Results are returned in JSON format with metadata."""
+    Returns a comprehensive list of all memories in JSON format with metadata."""
 )
-async def get_all_coding_preferences() -> str:
-    """Get all coding preferences for the default user.
+async def read_all_memories() -> str:
+    """Get all memories for the default user.
 
-    Returns a JSON formatted list of all stored preferences, including:
-    - Code implementations and patterns
-    - Technical documentation
-    - Programming best practices
+    Returns a JSON formatted list of all stored memories, including:
+    - Content and patterns
+    - Documentation
+    - Best practices
     - Setup guides and examples
-    Each preference includes metadata about when it was created and its content type.
+    Each memory includes metadata about when it was created and its content type.
     """
     try:
         memories = mem0_client.get_all(user_id=DEFAULT_USER_ID, page=1, page_size=50)
         flattened_memories = [memory["memory"] for memory in memories["results"]]
         return json.dumps(flattened_memories, indent=2)
     except Exception as e:
-        return f"Error getting preferences: {str(e)}"
+        return f"Error getting memories: {str(e)}"
 
 @mcp.tool(
-    description="""Search through stored coding preferences using semantic search. This tool should be called 
-    for EVERY user query to find relevant code and implementation details. It helps find:
-    - Specific code implementations or patterns
-    - Solutions to programming problems
-    - Best practices and coding standards
-    - Setup and configuration guides
-    - Technical documentation and examples
-    The search uses natural language understanding to find relevant matches, so you can
-    describe what you're looking for in plain English. Always search the preferences before 
-    providing answers to ensure you leverage existing knowledge."""
-)
-async def search_coding_preferences(query: str) -> str:
-    """Search coding preferences using semantic search.
-
-    The search is powered by natural language understanding, allowing you to find:
-    - Code implementations and patterns
-    - Programming solutions and techniques
-    - Technical documentation and guides
+    description="""Search through stored memories using semantic search. This tool should be called for EVERY user query to find relevant information, code, or implementation details. It helps find:
+    - Specific implementations or patterns
+    - Solutions to problems
     - Best practices and standards
-    Results are ranked by relevance to your query.
+    - Setup and configuration guides
+    - Documentation and examples
+    The search uses natural language understanding to find relevant matches, so you can describe what you're looking for in plain English. Always search the memories before providing answers to ensure you leverage existing knowledge."""
+)
+async def search_memories(query: str) -> str:
+    """Search memories using semantic search.
 
     Args:
-        query: Search query string describing what you're looking for. Can be natural language
-              or specific technical terms.
+        query: Search query string describing what you're looking for. Can be natural language or specific technical terms.
     """
     try:
         memories = mem0_client.search(query, user_id=DEFAULT_USER_ID, output_format="v1.1")
         flattened_memories = [memory["memory"] for memory in memories["results"]]
         return json.dumps(flattened_memories, indent=2)
     except Exception as e:
-        return f"Error searching preferences: {str(e)}"
+        return f"Error searching memories: {str(e)}"
+
+@mcp.tool(
+    description="""Update an existing memory entry. Provide the memory ID and the new content. Useful for correcting or expanding previously stored information."""
+)
+async def update_memory(memory_id: str, new_text: str) -> str:
+    """Update an existing memory entry.
+
+    Args:
+        memory_id: The ID of the memory to update.
+        new_text: The new content for the memory.
+    """
+    try:
+        mem0_client.update(memory_id=memory_id, data= new_text)
+        return f"Successfully updated memory {memory_id}"
+    except Exception as e:
+        return f"Error updating memory: {str(e)}"
+
+@mcp.tool(
+    description="""Delete a memory entry by its ID. Useful for removing outdated or incorrect information."""
+)
+async def delete_memory(memory_id: str) -> str:
+    """Delete a memory entry by its ID.
+
+    Args:
+        memory_id: The ID of the memory to delete.
+    """
+    try:
+        mem0_client.delete(memory_id=memory_id)
+        return f"Successfully deleted memory {memory_id}"
+    except Exception as e:
+        return f"Error deleting memory: {str(e)}"
 
 def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlette:
     """Create a Starlette application that can server the provied mcp server with SSE."""
