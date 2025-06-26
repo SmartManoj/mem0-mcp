@@ -1,5 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 from starlette.applications import Starlette
+from starlette.responses import Response
 from mcp.server.sse import SseServerTransport
 from starlette.requests import Request
 from starlette.routing import Mount, Route
@@ -130,7 +131,7 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
     """Create a Starlette application that can server the provied mcp server with SSE."""
     sse = SseServerTransport("/messages/")
 
-    async def handle_sse(request: Request) -> None:
+    async def handle_sse(request: Request) -> Response:
         async with sse.connect_sse(
                 request.scope,
                 request.receive,
@@ -141,6 +142,7 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
                 write_stream,
                 mcp_server.create_initialization_options(),
             )
+        return Response()
 
     return Starlette(
         debug=debug,
